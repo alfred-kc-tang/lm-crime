@@ -20,7 +20,7 @@ The data set is obtained from the [StatSci.org](http://www.statsci.org/data/gene
 
 ## Assumptions
 
-### Linearity and Homoscedasticity
+### 1. Linearity and Homoscedasticity
 
 What linearity means concisely is that the function is *linear in the parameters*, instead of linear in explanatory variables. Explanatory variables are allowed to have non-linear patterns in the models, for linear models can model non-linear patterns in the data by the use of non-linear variables, e.g. using the cubic version of an explanatory variable, or by the log-transformation on the variables, for example. Thus, to put it precisely, *the function is linear in the sense that it is a sum of terms, each of which is of the product form as a parameter multiplied by a function of a given explanatory variable (which can simply be the variable itself without any transformation)*. Therefore, the linearity assumption does NOT mean that the relationship between the response variable and each of the explanatory variables are assumed to be linear, which is a much stronger assumption.
 
