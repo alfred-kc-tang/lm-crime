@@ -1,0 +1,343 @@
+---
+title: "Linear Regression on Crime Rates"
+author: "Alfred Ka Chau Tang"
+date: "10/8/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+Linear Regression is one of the traditional techniques that are still in common use. Its simplicity and understandability display its great elegance. Yet it would tell a fairy tale if we accept its conclusion without its assumptions in mind. If its assumptions turn out to be flawed, we would have false premises to reach the conclusion that appears to be justified by the mathematics behind it. What's worse, we would be unaware of this mistake without checking the assumptions. Instead of solely constructing linear models, the project brings these assumptions of linear regression into sharp focus, in addition to other important topics on variable selection as well as model comparison.
+
+# Exploratory Data Analysis (EDA)
+
+Before fitting a regression line, I would like to do some exploratory data analysis on the data.
+
+```{r}
+data <- read.table("uscrime.txt", header = TRUE)
+dim(data)
+```
+
+There are 47 observations with 16 variables, one of which is the response variable, i.e. crime rate, that we are going to predict. Let us take a took at the data with head and summary functions, and then plot histograms on each of the variables.
+
+```{r}
+head(data)
+```
+
+```{r}
+summary(data)
+```
+
+We can take a look at whether there is some correlation between the variables and the response, i.e. crime rate, which is on the y-axis.
+
+```{r}
+par(mfrow = c(4, 4), mar = c(2, 2, 2, 2)) 
+for (i in 1:15) {
+  plot(data[, i], data[, 16], main = names(data)[i])
+}
+```
+
+After looking at the scatterplots of each of the variables against the response variable, it appears that there is none of the variables that has a strong linear relationship with the response variable, crime rate. To further verify this, I would like to use the corrgram function on the variables.
+
+```{r}
+# install.packages("gpairs")
+library(gpairs)
+suppressWarnings(corrgram(data))
+```
+
+The blue color indicates positive correlation while red indicates negative correlation in the corrgram; moreover, the darker the color is, the stronger the relationship is. We can take a look at the last column: Po1 and Po2 have relatively darker blue colors that indicate their relatively strong positive linear relationships with the crime rate; Prob has relatively darker red color that indicates its relatively strong negative linear relationship with the crime rate. In any case, there is still none of the explanatory variables that exhibits a close linear relationship with the response variable, crime rate.
+
+Apart from that, it can be seen from the histogram and scatterplot that the second explanatory variable So, an indicator variable for a southern state, is binary. It should thus be treated as a factor.
+
+```{r}
+data$So <- factor(data$So)
+levels(data$So)
+```
+
+The boxplot is a perfect tool to observe whether there is a correlation between a categorical variable, So in this case, and a numerical variable like our response in this case.
+
+```{r}
+plot(data[, 2], data[, 16], xlab = names(data)[2], ylab = names(data)[16])
+```
+
+From the plot, we see that the means are similar regardless of whether So is 0 or 1. The only discernible difference is the larger variance in the group of 0.
+
+# Variable Selection via Backward Elimination
+
+Given the low correlations between the explanatory variables and the response variable, I suspect that some of the explanatory variables are not useful for predicting the response variable, crime rate. Here I would like to select some of the variables using one of the Stepwise Regression Method based on p-values: Backward Elimination. Its procedure works in the following steps:
+
+1. Start with the model with all the explanatory variables.
+
+2. Remove the explanatory variable with the highest p-value larger than a critical value.
+
+3. Refit the model and go to the previous step.
+
+4. Stop until all the p-values are less than the critical value, 0.05.
+
+```{r}
+lm1 <- lm(Crime ~ ., data)
+summary(lm1)
+```
+
+```{r}
+lm1 <- update(lm1, . ~ . - So)
+summary(lm1)
+```
+
+```{r}
+lm1 <- update(lm1, . ~ . - Time)
+summary(lm1)
+```
+
+```{r}
+lm1 <- update(lm1, . ~ . - LF)
+summary(lm1)
+```
+
+```{r}
+lm1 <- update(lm1, . ~ . - NW)
+summary(lm1)
+```
+
+```{r}
+lm1 <- update(lm1, . ~ . - Po2)
+summary(lm1)
+```
+
+```{r}
+lm1 <- update(lm1, . ~ . - Pop)
+summary(lm1)
+```
+
+```{r}
+lm1 <- update(lm1, . ~ . - Wealth)
+summary(lm1)
+```
+
+```{r}
+lm1 <- update(lm1, . ~ . - M.F)
+summary(lm1)
+```
+
+```{r}
+lm1 <- update(lm1, . ~ . - U1)
+summary(lm1)
+```
+
+Here all the explanatory variables M, Ed, Po1, U2, Ineq and Prob have p-values of lower than the critical value, 0.05, and thus this model is chosen from the Backward Elimination procedure.
+
+# Model Comparision by Goodness of Fit: $R^2$ and Adjusted $R^2$
+
+We can compare the goodness of fit of this finalized model and the full model using all explanatory variables in terms of $R^2$.
+
+```{r}
+lm2 <- lm(Crime ~ ., data)
+summary(lm1)
+summary(lm2)
+```
+
+The full model using all explanatory variables, lm2, has a slightly higher value of $R^2$, which means the fitted values are closer to the observed values, and hence it indicates that the regression equation fits the data slightly better than the selective model using only the explanatory variables M, Ed, Po1, U2, Ineq and Prob, lm1. Yet the fact that the removal of 9 variables leads to such a small decrease in $R^2$ suggests that the model lm1 removed the other explanatory variables that are indeed unnecessary. In fact, $R^2$ always increases when an additional explanatory variable is included. However, a full model with superfluous explanatory variables obscures the picture in a way that it appears to capture more information from the training data; in a word, overfitting. 
+
+Due to this limitation, adjusted $R^2$ is conceived to penalize models with more explanatory variables by adjusting the percentage of explained variance in accordance with the number of explanatory variables. As a result, it allows us to meaningfully compare models with different number of explanatory variables. Therefore, adjusted $R^2$ is a better performance measure that strikes the balance between a relatively small number of variables and a good fit to the data. By adjusted $R^2$, the selective model is regarded as a better alternative to the full model.
+
+# Assumptions
+
+After the selection of the best linear model, we should check the whether the assumptions of linear model have been violated. If it turns out to be the case, the model predictions would not only be way off but also misleading. 
+
+## 1. Linearity and Homoscedasticity
+
+### The Meaning
+
+In a linear model, the mean of the response variable is modelled by a function of the form
+
+$$
+\boldsymbol{Y} = \boldsymbol{X\beta} + \boldsymbol{\epsilon}
+$$
+
+where $\boldsymbol{X}$ represents the explanatory variables stored in a matrix and $\beta$ are parameters in vector form. This form shows the linear nature of the model by this *linear combination* of the explanatory variables and parameters. What linearity means concisely is that the function is *linear in the parameters*, instead of linear in explanatory variables. Explanatory variables are allowed to have non-linear patterns in the models, for linear models can model non-linear patterns in the data by the use of non-linear variables, e.g. using the cubic version of an explanatory variable, or by the log-transformation on the variables, for example. Thus, to put it precisely, *the function is linear in the sense that it is a sum of terms, each of which is of the product form as a parameter multiplied by a function of a given explanatory variable (which can simply be the variable itself without any transformation)*. Therefore, the linearity assumption does NOT mean that the relationship between the response variable and each of the explanatory variables are assumed to be linear, which is a much stronger assumption.
+
+On the other hand, it is the linearity assumption that leads to the assumption of homoscedasticity, which says that different values of the response variable are assumed to have the same variance in their residuals, regardless of the values of the explanatory variables. In fact, professor Nau points out the connection between the two assumptions: "Heteroscedasticity [i.e. violation of the homoscedasticity assumption] can also be a byproduct of a significant violation of the linearity and/or independence assumptions, in which case it may also be fixed as a byproduct of fixing those problem". After all, when heteroscedasticity is discovered, it is a sign of some patterns left unexplained by the linear model, and these patterns are most likely non-linear.
+
+### The Rationale
+
+The arguments behind the assumption are listed as follows: (1) linear relationships are the simplest non-trivial ones that can be modelled; (2) relationships between variables in the real world usually turn out to be at least approximately linear; (3) transformations can be performed to straighten non-linear relationships.
+
+Its significance lies in the possible scenario, in which the underlying pattern is non-linear while the pattern within the range of the training data is linear. As a result, the model predictions are way off when predicted values are beyond the range of the training data, if the data are in fact non-linearly related.
+
+### Diagnosis Methods
+
+It is this assumption that motivates us to do what we did in EDA, namely looking at the scatterplots to determine whether the relationships between the response variable and each of the explanatory variables are linear. They are always not perfectly linear, but they at least do not exhibit non-linear patterns. Yet this step is NOT sufficient for ensuring that our assumption is satisfied. On top of that, we should see whether there is any unexplained curvature or non-linear pattern left in the residuals vs fitted plot, which is a standard output in R, after building the model. An alternative plot is one showing observed against predicted values, though Professor Nau prefers the residuals vs fitted plot to this one due to its distracting sloping pattern. The upper-left panel of the following plot is the residuals vs fitted plot:
+
+```{r}
+par(mfrow = c(2, 2)) 
+plot(lm2)
+```
+
+The plot can also be obtained by the command as follows:
+
+```{r}
+plot(lm1$fitted.values, lm1$residuals, main = "Residuals vs Fitted")
+```
+
+We do not see a "bowed" shape in the plot that indicates a non-linear pattern left in the residuals, so we are good to go.
+
+### Solution Pointers 
+
+If a non-linear pattern is found in the residuals, (1) non-linear transformations of explanatory variables and/or the response variable and (2) inclusion of higher-order terms of a given explanatory variable are possible remedies.
+
+What transformation is appropriate depends on the type of the variable: for instance, log-transformation is suitable for variable which only takes on positive values. Interpretation of the models would be different depending on whether the log-transformation is applied only on the response variable or both the explanatory and the response variables. If it is the former case, it is understood to be increase (or decrease) exponentially as a function of the explanatory variables. If the latter case, the marginal effects of the explanatory variables are multiplicative instead of additive. That is to say, a percentage change in a given explanatory variable induces a proportional percentage change in the response variable, *ceteris paribus*.
+
+Adding a second-order term of an explanatory may be a solution, when there appears a parabolic curve in the plot of residuals versus fitted values. However, higher-order terms should be avoided as much as possible, as it often leads to overfitting while it appears to fit the training data neatly.
+
+## 2. Additivity and Non-Multicollinearity
+
+### The Meaning
+
+If there is an assumption about the explanatory variable themselves in the light of the above form of linear model, it is the additivity assumption that the response variable can be modelled by adding the explanatory variables on top of each other, as Professor Robert Nau at Duke University articulated well on [his website](http://people.duke.edu/~rnau/testing.htm). In his own words, "the effects of different independent variables on the expected value of the dependent variable is additive." Its implication is that *the coefficient of an explanatory variable does not depend on the values of other explanatory variables*. So what this assumption means to users is, concisely speaking, that *the marginal effect of an explanatory variable is independent from any changes in other explanatory variables*. Thus, the assumption of no multicollinearity that there is no correlation between the explanatory variables comes into play, so that the variables are assumed to be independent.
+
+### The Rationale
+
+The reason behind the assumption is that the coefficient of a given explanatory variable is estimated *ceteris paribus*, i.e. holding other explanatory variables constant. Its significance lies in ensuring the stability of the coefficients, which can be argued by argumentum ad absurdum. When modelling two highly correlated explanatory variables, their coefficients would be unstable, in the sense that the magnitude of the effect of a given explanatory variable on the response variable would no longer be the coefficient shown in the model, since the other variable would have changed. As a result, we are unable to isolate the effect of the given variable as its corresponding coefficient estimated by the model.
+
+### Diagnosis Methods
+
+It is the assumption of non-multicollinearity that triggers us to see if there are correlations between explanatory variables in EDA. It is impractical to have zero correlation in each pair of the explanatory variables, but correlations of lower than 30% is good enough in general. On the other hand, Professor Nau suggests that non-additivity may be detected by systematic patterns in plots of the residuals versus individual explanatory variable, which is shown as follows:
+
+```{r}
+par(mfrow = c(4, 4), mar = c(2, 2, 2, 2)) 
+for (i in 1:15) {
+  plot(lm1$residuals, data[, i], main = names(data)[i])
+}
+```
+
+Another way to detect non-additivity is by using Variance Inflation Factor, whose formula is
+
+$$
+\frac{1} {1 - R^2}
+$$
+
+showing that it is essentially an inflated version of $R^2$. In any case, it measures how much variance of a given explanatory variables can be explained by the others. If $VIF \geq 10$, which is equivalent to $R^2 = 0.9$ of the model predicting that explanatory variable using others, then it means that this variable has a high correlation with one of the explanatory variables. Thus, variables with VIF of 10 or more should be dropped.
+
+```{r}
+# install.packages("regclass")
+library(regclass)
+VIF(lm1)
+```
+
+```{r}
+VIF(lm2)
+```
+
+Using the VIF function from "regclass" library, it is found that both Po1 and Po2 have high correlations with others, probably with each other. Fortunately, we see that the best model does not have these two explanatory variables after the variable selection, and hence has no issues of multicollinearity.
+
+### Solution Pointers
+
+If there exists non-additive patterns, interaction terms may be included to help separate the effects into additive terms. It is reasonable to add interaction terms, for it is possible that the effect of an explanatory variable on the response variable may depend on another explanatory variable; for example, the effect of Ineq on the crime rate would be greater when Ed is lower. Nevertheless, interaction terms would make the models harder to be interpreted, especially higher-order interaction terms.
+
+Domain knowledge is needed sometimes to deal with the problem, such as to know how the explanatory variables are measured. If two explanatory variables are correlated with each other, it may be reasonable to combine them into a single one by a function that makes sense by your judgment. Sometimes, the additive structure of regression models might not even make sense for the data.
+
+## 3. Independently and Identically Normally Distributed Errors
+
+### The Meaning
+
+This assumption is that the error terms are independently and identically normally distributed; to put it simply, the errors are uncorrelated with each other and has a normal distribution shape. As a result, both the mean and the zero are nearly zero. This assumption, especially the independence of errors, is obviously connected to the above assumptions. It should be clearly stated that it is the prediction errors that are required to be normally distributed, while the explanatory and response variables themselves are NOT required to be normally distributed. Therefore, looking at the histograms of all the variables before model building in EDA does NOT ensure that this assumption is held.
+
+Nonetheless, this assumption is loosen as the sample size grows; that is, this assumption is no longer held given a large sample size. If you only aim at estimating the coefficients and predictions in the manner of minimizing mean squared error (MSE) and are confident that the model specification is correct, the assumption is not necessary, technically speaking. That is the reason why some references on regression analysis do not list normally distributed errors among the key assumptions, according to Professor Nau. However, we are generally interested in making inferences about the model and/or estimating the probability that a given prediction error will exceed a given threshold, in which case the distribution assumption is important.
+
+### The Rationale
+
+This assumption is often justified by appeal to the Central Limit Theorem, which states that the sum of a sufficiently large number of independent random variables approaches a normal distribution, regardless of their original distributions. Moreover, it implies that the optimal coefficient estimates in a linear model are those that minimize the mean squared error, which are computationally laboursaving. On the other hand, it rationalizes the use of statistical tests that are based on the family of normal distributions, such as the t distribution, the F distribution, and the Chi-square distribution. Furthermore,  transformations could be performed to make the errors approximately normal.
+
+Its significance is again shown by its violations. If the errors are not normally distributed, issues emerge when determining whether coefficients are significantly different from zero and calculating confidence intervals for prediction. Sometimes, the distribution of errors is "skewed" by the presence of outliers, where such outliers exercises a disproportionate influence on estimating coefficients which is based on the minimization of squared error. As a consequence, explanatory variables that are in fact useful could be dropped from the model. On the other hand, confidence intervals would be too wide or narrow if the error distribution is far from normal. This shows that hypothesis testing on the coefficients and confidence intervals are based on this assumption.
+
+### Diagnosis Method
+
+Normal probability plot or normal quantile plot of the residuals can be used to check the normality of errors. If the dots in the plot roughly fall on the diagonal line, then it means the errors are normally distributed. If there exists a bow-shaped pattern that are deviated from the diagonal line in the plot, that indicates skewness of the errors; in other words, they are not symmetrically distributed. If the pattern is S-shaped instead, it is a sign of kurtosis, the error distribution's tails is way off from the normal shape. As hinted at previously, the problem can be caused by outliers, which can also be detected by the plots. A normal quantile plot is easily obtained after building the model as it is also a standard output in R. It is shown in the upper-right panel of the following plot:
+
+```{r}
+par(mfrow = c(2, 2)) 
+plot(lm2)
+```
+
+The normal quantile plot can also be obtained by the command as follows:
+
+```{r}
+qqnorm(lm1$residuals)
+qqline(lm1$residuals)
+```
+
+There appear a few outliers in the plot that contribute to violating the normality assumption. In fact, there are outlier tests to determine a given observation is really an outlier by statistical significance. Before conducting any outlier test on the data, I would like to plot the histogram and qqplot of the respose variable to see whether it is normally distributed. For some outlier tests, including Grubbs test, also has the normal distribution assumption.
+
+```{r}
+hist(data[, 16], breaks = 20, 
+     main = "Histogram of the Response Variable", 
+     xlim = c(0, 2100), 
+     xlab = "Number of Crimes per 100,000 People")
+```
+
+```{r}
+qqnorm(data[, 16])
+qqline(data[, 16])
+```
+
+Although the histogram shows that the data seems to be in right-skewed distribution, it could be the case that some outliers lead the data to be right-skewed, despite its being normally distributed. If we use the qqnorm function, we can see that most of the data points are on the line, which affirms that the data is mostly normally distributed, while some points are deviated from the line, which indicates that they are probably outliers causing the data to appear right-skewed as shown in the histogram.
+
+To see whether there are some outliers, we can use the following box-and-whisker plot to do so:
+
+```{r}
+boxplot(data[, 16], main = "Box-and-whisker Plot", 
+        ylim = c(0, 2000), 
+        ylab = "no. of crimes per 100,000 people")
+```
+
+As the above box-and-whisker plot shows, there are a few outliers in the higher tail of the data.
+
+In the following, I use the grubbs.test function to see if there are outliers at either end.
+
+```{r}
+# install.packages('outliers')
+library(outliers)
+grubbs.test(data[, 16], type = 10)
+grubbs.test(data[, 16], type = 10, opposite = TRUE)
+```
+
+The alternative hypotheses are that the highest value 1993 and the lowest value 342 are outliers, but these alternative hypothese are rejected if we set the p-value to be 0.05. However, if we use Turkey's rule on finding outliers, which is already used by the the box-and-whisker plot, that is, any values more than 1.5 times interquartile range from the quartiles (either below Q1 - 1.5IQR or above Q3 + 1.5IQR) are outliers, then there are 3 outliers in the data as shown in the box-and-whisker plot.
+
+### Solution Pointers
+
+As Professor Nau explicitly states, "violations of normality often arise either because (a) the distributions of the dependent and/or independent variables are themselves significantly non-normal, and/or (b) the linearity assumption is violated." Thus, transformation is usually the first thing to try. Hence, it is recommended to focus more on the other assumptions, for it is probably a violation of another assumption that leads to the violation of this assumption. However, outlier is another main source that is responsible for the violation of normality assumption.
+
+# Conclusion
+
+In this project, it is found that only a subset of the explanatory variables are useful, namely M, Ed, Po1, U2, Ineq and Prob. We are able to determine that the selective model using only the above variables is a better alternative to the full model by using adjusted $R^2$, which is a better model performance measure than $R^2$. It is because the adjusted version takes both the percentage and explained variance and the number of explanatory variables into account. Then, I went on to elaborate on the assumptions of linear regression that are often neglected by users. It is discovered that the best model faces no violations of the first two assumptions: (1) linearity and homoscedasticity as well as (2) additivity and non-multicollinearity. However, there are arguably outliers that lead to the violation of (3) the error distribution assumption in the best model. Therefore, it is worth trying to build another version of the model after removing the outlier candidates.
+
+```{r}
+outlier1_idx <- which(max(data[, 16]) == data[, 16])
+outlier2_idx <- which(min(data[, 16]) == data[, 16])
+lm3 <- lm(Crime ~ M + Ed + Po1 + U2 + Ineq + Prob, 
+          data[-c(outlier1_idx, outlier2_idx), ])
+summary(lm1)
+summary(lm3)
+```
+
+As we can see, the model after the removal of the outlier candidates has a lower adjusted $R^2$ than the model without the removal. Therefore, I would not consider the candidates as outlier, not only because the significance level of the outlier test is still higher than 0.05, but also because it plays a role in improving the model prediction accuracy.
+
+All in all, we should be aware of the assumptions of the linear regression. It is easy to throw the data into the model, but the mathematics and the software do not make the predictions accurate and the explanations convincing if you are not critical of the assumptions. It is this project's hope that the awareness of checking the assumptions when building regression models be fostered.
+
+# References
+
+Gupta S. [Assumptions of linear regression you might not know](https://towardsdatascience.com/assumptions-in-linear-regression-528bb7b0495d).
+
+Nau R. [Introduction to linear regression analysis](http://people.duke.edu/~rnau/regintro.htm).
+
+Nau R. [Testing the assumptions of linear regression](http://people.duke.edu/~rnau/testing.htm).
+
+Nishida K. [Why multicollinearity is a problem and how to detect it in your regression models](https://blog.exploratory.io/why-multicollinearity-is-bad-and-how-to-detect-it-in-your-regression-models-e40d782e67e)
+
+Prabhakaran S. [Assumptions of Linear Regression](http://r-statistics.co/Assumptions-of-Linear-Regression.html)
