@@ -1,4 +1,4 @@
-# [Linear Regression on crime rates](https://alfred-kctang.github.io/lm-crime/)
+# [Linear Regression on Crime Rates](https://alfred-kctang.github.io/lm-crime/)
 
 ## Table of Contents
 
